@@ -1,0 +1,42 @@
+[package]
+name = "orderselect"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Ordered multi-select prompt for Rust CLIs — select a subset and preserve selection order"
+authors = ["Umar Alfarouk <medrivia@gmail.com>"]
+homepage = "https://github.com/mdrv/orderselect"
+repository = "https://github.com/mdrv/orderselect"
+keywords = ["cli", "prompt", "select", "order", "inquire"]
+categories = ["command-line-interface", "command-line-utilities"]
+publish = true
+
+[lib]
+name = "orderselect"
+path = "src/lib.rs"
+
+[[bin]]
+name = "orderselect"
+path = "src/bin/orderselect.rs"
+required-features = ["cli"]
+
+[features]
+default = []
+cli = ["dep:clap"]
+
+[dependencies]
+crossterm = "0.28"
+thiserror = "2"
+
+[dependencies.clap]
+version = "4"
+features = ["derive"]
+optional = true
+
+[dev-dependencies]
+pretty_assertions = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
