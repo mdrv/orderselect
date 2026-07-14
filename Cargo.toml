@@ -1,6 +1,6 @@
 [package]
 name = "orderselect"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -11,6 +11,13 @@ repository = "https://github.com/mdrv/orderselect"
 keywords = ["cli", "prompt", "select", "order", "inquire"]
 categories = ["command-line-interface", "command-line-utilities"]
 publish = true
+exclude = [
+    "docs/",
+    ".github/",
+    ".lhg/",
+    "dprint.jsonc",
+    "prek.toml",
+]
 
 [lib]
 name = "orderselect"

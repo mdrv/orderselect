@@ -6,12 +6,16 @@
 #   - No extra secrets needed (uses the default GITHUB_TOKEN).
 #   - Ensure docs/changelogs/ has an entry with 'mid: v<version>' for each tag.
 #   - Control targets via [ci] release_targets in .lhg/config.toml.
+#   - If your binary is behind a feature gate (e.g. required-features = ["cli"]),
+#     set [ci] release_build in .lhg/config.toml:
+#       release_build = "cargo build --release --features cli --target {target}"
 name: Release
 
 on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -32,10 +36,6 @@ jobs:
             os: windows-latest
           - target: aarch64-pc-windows-msvc
             os: windows-latest
-          - target: armv7-unknown-linux-musleabihf
-            os: ubuntu-latest
-          - target: x86_64-apple-darwin
-            os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -52,11 +52,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y musl-tools
+      - name: Configure armv7 cross-linker
+        if: contains(matrix.target, 'armv7')
+        run: |
+          mkdir -p .cargo
+          printf '[target.armv7-unknown-linux-musleabihf]\nlinker = "arm-linux-gnueabihf-gcc"\n' >> .cargo/config.toml
       - name: Build
         shell: bash
         run: |
-          cargo build --release --locked --target ${{ matrix.target }}
+          cargo build --release --features cli --target ${{ matrix.target }}
       - name: Package
+        shell: bash
         run: |
           BIN_NAME=$(grep -m1 '^name' Cargo.toml | sed 's/^name *= *"\(.*\)"/\1/')
           mkdir -p dist
