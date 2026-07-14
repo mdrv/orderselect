@@ -23,3 +23,6 @@ ignore = ".lhg/filesize.ignore"   # gitignore-style (see 60-hooks.md)
 [secret]
 enabled = true
 
+[ci]
+release_build = "cargo build --release --features cli --target {target}"
+

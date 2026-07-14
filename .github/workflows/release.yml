@@ -6,12 +6,16 @@
 #   - No extra secrets needed (uses the default GITHUB_TOKEN).
 #   - Ensure docs/changelogs/ has an entry with 'mid: v<version>' for each tag.
 #   - Control targets via [ci] release_targets in .lhg/config.toml.
+#   - If your binary is behind a feature gate (e.g. required-features = ["cli"]),
+#     set [ci] release_build in .lhg/config.toml:
+#       release_build = "cargo build --release --features cli --target {target}"
 name: Release
 
 on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -32,10 +36,6 @@ jobs:
             os: windows-latest
           - target: aarch64-pc-windows-msvc
             os: windows-latest
-          - target: armv7-unknown-linux-musleabihf
-            os: ubuntu-latest
-          - target: x86_64-apple-darwin
-            os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -52,11 +52,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y musl-tools
+      - name: Configure armv7 cross-linker
+        if: contains(matrix.target, 'armv7')
+        run: |
+          mkdir -p .cargo
+          printf '[target.armv7-unknown-linux-musleabihf]\nlinker = "arm-linux-gnueabihf-gcc"\n' >> .cargo/config.toml
       - name: Build
         shell: bash
         run: |
-          cargo build --release --locked --target ${{ matrix.target }}
+          cargo build --release --features cli --target ${{ matrix.target }}
       - name: Package
+        shell: bash
         run: |
           BIN_NAME=$(grep -m1 '^name' Cargo.toml | sed 's/^name *= *"\(.*\)"/\1/')
           mkdir -p dist
@@ -65,7 +71,7 @@ jobs:
           else
             cp "target/${{ matrix.target }}/release/$BIN_NAME" "dist/$BIN_NAME-${{ matrix.target }}"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target }}
           path: dist/
@@ -76,7 +82,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -94,7 +100,7 @@ jobs:
             /^```yaml$/ { y=1; next }
             /^```$/ && y { y=0; if(f) b=1; next }
             y && $0=="mid: "t { f=1; next }
-            b && /^## / { sub(/^## */,""); print; exit }
+            b && /^## / { sub(/^## */,""); sub(/^v[0-9][0-9.]* — /,""); print; exit }
           ' "$SERIES_FILE")
           BODY_FILE="$(mktemp)"
           awk -v t="${TAG}" '
@@ -117,7 +123,7 @@ jobs:
             echo "body_file=${BODY_FILE}"
           } >> "$GITHUB_OUTPUT"
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: ${{ steps.notes.outputs.name }}
           body_path: ${{ steps.notes.outputs.body_file }}
